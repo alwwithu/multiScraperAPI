@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"normalizer/scraper"
@@ -38,8 +36,7 @@ func (ws *WebServer) Start() error {
 	api.HandleFunc("/scrape", ws.handleScrape).Methods("GET")
 	api.HandleFunc("/health", ws.handleHealth).Methods("GET")
 
-	// Serve static files
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./web/")))
+	// API-only mode - no static file serving
 
 	// CORS middleware
 	r.Use(corsMiddleware)
@@ -47,9 +44,8 @@ func (ws *WebServer) Start() error {
 	// Logging middleware
 	r.Use(loggingMiddleware)
 
-	fmt.Printf("🚀 Web server starting on http://localhost:%s\n", ws.port)
-	fmt.Printf("📱 Frontend available at: http://localhost:%s\n", ws.port)
-	fmt.Printf("🔗 API endpoints:\n")
+	fmt.Printf("🚀 API server starting on http://localhost:%s\n", ws.port)
+	fmt.Printf("🔗 Available endpoints:\n")
 	fmt.Printf("   - GET /api/scrape - Scrape tickets\n")
 	fmt.Printf("   - GET /api/health - Health check\n")
 
@@ -214,23 +210,11 @@ func main() {
 	port := flag.String("port", "8080", "Port to run the web server on")
 	flag.Parse()
 
-	// Check if we're in the right directory
-	if _, err := os.Stat("./web"); os.IsNotExist(err) {
-		log.Fatal("Web directory not found. Please run from the project root directory.")
-	}
+	// API-only mode - no web directory required
 
-	// Check if web files exist
-	webFiles := []string{"index.html", "styles.css", "script.js"}
-	for _, file := range webFiles {
-		path := filepath.Join("./web", file)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			log.Fatalf("Required web file not found: %s", path)
-		}
-	}
-
-	fmt.Println("🌐 Real Madrid Ticket Scraper Web Interface")
-	fmt.Println("==========================================")
-	fmt.Printf("Starting web server on port %s...\n", *port)
+	fmt.Println("🚀 Real Madrid Ticket Scraper API")
+	fmt.Println("=================================")
+	fmt.Printf("Starting API server on port %s...\n", *port)
 	fmt.Println()
 
 	// Create and start web server
