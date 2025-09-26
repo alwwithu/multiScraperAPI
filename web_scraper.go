@@ -31,10 +31,13 @@ func NewWebServer(port string) *WebServer {
 func (ws *WebServer) Start() error {
 	r := mux.NewRouter()
 
-	// API routes
-	api := r.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/scrape", ws.handleScrape).Methods("GET")
-	api.HandleFunc("/health", ws.handleHealth).Methods("GET")
+	// API routes (no prefix)
+	r.HandleFunc("/scrape", ws.handleScrape).Methods("GET")
+	r.HandleFunc("/health", ws.handleHealth).Methods("GET")
+
+	// Handle OPTIONS requests for CORS
+	r.HandleFunc("/scrape", ws.handleOptions).Methods("OPTIONS")
+	r.HandleFunc("/health", ws.handleOptions).Methods("OPTIONS")
 
 	// API-only mode - no static file serving
 
@@ -46,8 +49,8 @@ func (ws *WebServer) Start() error {
 
 	fmt.Printf("🚀 API server starting on http://localhost:%s\n", ws.port)
 	fmt.Printf("🔗 Available endpoints:\n")
-	fmt.Printf("   - GET /api/scrape - Scrape tickets\n")
-	fmt.Printf("   - GET /api/health - Health check\n")
+	fmt.Printf("   - GET /scrape - Scrape tickets\n")
+	fmt.Printf("   - GET /health - Health check\n")
 
 	return http.ListenAndServe(":"+ws.port, r)
 }
@@ -181,13 +184,27 @@ func (ws *WebServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(health)
 }
 
+// handleOptions handles OPTIONS requests for CORS
+func (ws *WebServer) handleOptions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.WriteHeader(http.StatusOK)
+}
+
 // corsMiddleware adds CORS headers
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400")
 
+		// Handle preflight requests
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
